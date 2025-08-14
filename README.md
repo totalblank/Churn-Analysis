@@ -64,16 +64,18 @@ In **R console** from the project root:
 ```{r}
 install.packages("renv")
 library(renv)
+renv::init()
+renv::snapshot() # choose 1
 renv::activate(project = ".")
 
-install.packages(c(
+renv::install(c(
   "shiny","bslib","tidyverse","plotly","DT","lubridate","data.table",
   "arrow","duckdb","memoise","pins",
   "tidymodels","vip","yardstick",
   "testthat","shinytest2","glue","readr","janitor"
 ))
 
-revn::snapshot(prompt = F)
+renv::snapshot(prompt = F)
 ```
 
 # Reproduce

@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "generated_at": "2025-08-14 22:25:01.250072",
+  "data_path": "data/processed/telecom_churn_clean.csv",
+  "file_hash": "0c3c9ade4a643d00",
+  "n_rows": 5000,
+  "n_cols": 17,
+  "columns": {
+    "intl_plan": {
+      "column": "intl_plan",
+      "type": "numeric",
+      "example_value": "0",
+      "n_missing": 185,
+      "n_unique": 2,
+      "range": [0, 1]
+    },
+    "voice_mail_plan": {
+      "column": "voice_mail_plan",
+      "type": "numeric",
+      "example_value": "1",
+      "n_missing": 403,
+      "n_unique": 2,
+      "range": [0, 1]
+    },
+    "number_vmail_messages": {
+      "column": "number_vmail_messages",
+      "type": "numeric",
+      "example_value": "25",
+      "n_missing": 161,
+      "n_unique": 48,
+      "range": [0, 52]
+    },
+    "total_day_minutes": {
+      "column": "total_day_minutes",
+      "type": "numeric",
+      "example_value": "265.1",
+      "n_missing": 370,
+      "n_unique": 1913,
+      "range": [0, 351.5]
+    },
+    "total_day_calls": {
+      "column": "total_day_calls",
+      "type": "numeric",
+      "example_value": "110",
+      "n_missing": 379,
+      "n_unique": 123,
+      "range": [0, 165]
+    },
+    "total_day_charge": {
+      "column": "total_day_charge",
+      "type": "numeric",
+      "example_value": "45.07",
+      "n_missing": 337,
+      "n_unique": 1908,
+      "range": [0, 59.76]
+    },
+    "total_eve_minutes": {
+      "column": "total_eve_minutes",
+      "type": "numeric",
+      "example_value": "197.4",
+      "n_missing": 106,
+      "n_unique": 1860,
+      "range": [0, 363.7]
+    },
+    "total_eve_calls": {
+      "column": "total_eve_calls",
+      "type": "numeric",
+      "example_value": "99",
+      "n_missing": 435,
+      "n_unique": 126,
+      "range": [0, 170]
+    },
+    "total_eve_charge": {
+      "column": "total_eve_charge",
+      "type": "numeric",
+      "example_value": "16.78",
+      "n_missing": 376,
+      "n_unique": 1615,
+      "range": [0, 30.91]
+    },
+    "total_night_minutes": {
+      "column": "total_night_minutes",
+      "type": "numeric",
+      "example_value": "244.7",
+      "n_missing": 463,
+      "n_unique": 1799,
+      "range": [0, 395]
+    },
+    "total_night_calls": {
+      "column": "total_night_calls",
+      "type": "numeric",
+      "example_value": "91",
+      "n_missing": 178,
+      "n_unique": 131,
+      "range": [0, 175]
+    },
+    "total_night_charge": {
+      "column": "total_night_charge",
+      "type": "numeric",
+      "example_value": "11.01",
+      "n_missing": 96,
+      "n_unique": 1023,
+      "range": [0, 17.77]
+    },
+    "total_intl_minutes": {
+      "column": "total_intl_minutes",
+      "type": "numeric",
+      "example_value": "10",
+      "n_missing": 309,
+      "n_unique": 168,
+      "range": [0, 20]
+    },
+    "total_intl_calls": {
+      "column": "total_intl_calls",
+      "type": "numeric",
+      "example_value": "3",
+      "n_missing": 320,
+      "n_unique": 21,
+      "range": [0, 20]
+    },
+    "total_intl_charge": {
+      "column": "total_intl_charge",
+      "type": "numeric",
+      "example_value": "2.7",
+      "n_missing": 303,
+      "n_unique": 170,
+      "range": [0, 5.4]
+    },
+    "number_customer_service_calls": {
+      "column": "number_customer_service_calls",
+      "type": "numeric",
+      "example_value": "1",
+      "n_missing": 407,
+      "n_unique": 10,
+      "range": [0, 9]
+    },
+    "churned": {
+      "column": "churned",
+      "type": "logical",
+      "example_value": "FALSE",
+      "n_missing": 0,
+      "n_unique": 2
+    }
+  },
+  "metadata": {
+    "source": "raw"
+  }
+}
