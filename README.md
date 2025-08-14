@@ -1,5 +1,6 @@
 # 📂 Project Folder Layout
 
+```
 customer-churn-dashboard/
 │
 ├── app.R                      # Main Shiny app entry point
@@ -54,6 +55,7 @@ customer-churn-dashboard/
 │   └── generate_report.R      # Script to render Quarto report
 │
 └── Dockerfile                 # For containerized deployment (optional)
+```
 
 # Set up `renv` (reproducible R env)
 
