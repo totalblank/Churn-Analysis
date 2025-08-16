@@ -1,5 +1,278 @@
 ---
-title: "churn_analysis"
-format: html
+title: "Customer Churn Analysis"
+author: "Aheer Srabon"
+date: today
+format:
+  pdf:
+    documentclass: article     # "article", "book", or "beamer" also possible
+    toc: true                  # table of contents
+    toc-depth: 2               # how deep headings appear in TOC
+    number-sections: true      # number the section headers
+    geometry: margin=1in       # control page margins
+    fontsize: 11pt             # font size (10pt, 11pt, 12pt)
+    mainfont: "Symbola" # requires xelatex/lualatex
+    monofont: "Fira Code"       # font for code
+    colorlinks: true            # colored links instead of boxes
+    fig-pos: "H"                # place figures exactly where they appear
+    fig-width: 6                # default figure width (in inches)
+    fig-height: 4               # default figure height
+    df-print: kable             # nice tables
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-fold: true             # collapse/expand code blocks
+    theme: cosmo                # Bootswatch theme (cosmo, flatly, etc.)
 ---
 
+```{r, error=FALSE, message=FALSE, include=FALSE}
+library(tidyverse)
+
+theme_set(theme_minimal(base_size = 12))
+
+```
+
+# Numeric Distributions (Histograms)
+
+```{r}
+#| echo: false
+
+df <- read.csv("../data/processed/customer_churn_data_clean.csv")
+
+# Drop index/ID columns; keep the rest from your schema
+df_use <- df |>
+  select(-X, -CustomerID)  # keep Churn, Age, Tenure, PhoneService, InternetService, Contract, MonthlyCharges, TotalCharges
+
+# Ensure churn is a factor with "No/Yes" levels per schema
+df_use <- df_use |>
+  mutate(Churn = factor(Churn, levels = c("No","Yes")))
+
+names(df)
+```
+
+```{r}
+#| message: false
+#| echo: false
+
+num_cols <- df_use |> 
+  select(where(is.numeric))
+
+num_long <- num_cols |> 
+  pivot_longer(everything(), names_to = "feature", values_to = "value")
+
+ggplot(num_long, aes(value)) +
+  geom_histogram(bins = 30, fill = "#4C78A8", alpha = 0.85, color = "white") +
+  facet_wrap(~feature, scales = "free", ncol = 2) +
+  labs(
+    title = "Numeric Feature Distributions",
+    subtitle = "Age, Tenure, MonthlyCharges, TotalCharges",
+    x = NULL, y = "Count"
+  )
+```
+
+# Numeric Densities by Churn
+
+```{r}
+#| echo: false
+
+num_long_churn <- df_use |> 
+  select(Churn, where(is.numeric)) |> 
+  pivot_longer(-Churn, names_to = "feature", values_to = "value") |> 
+  drop_na(value)
+
+ggplot(num_long_churn, aes(value, fill = Churn)) +
+  geom_density(alpha = 0.35) +
+  facet_wrap(~feature, scale = "free", ncol = 2) +
+  labs(
+    title = "Numeric Densities by Churn",
+    x = NULL,
+    y = "Density",
+    fill = "Churn"
+  )
+```
+
+# Numeric Box Plots by Churn
+
+```{r}
+#| echo: false
+
+ggplot(num_long_churn, aes(x = Churn, y = value, fill = Churn)) +
+  geom_boxplot(outlier.alpha = 0.25, width = 0.7) +
+  facet_wrap(~ feature, scales = "free_y", ncol = 2) +
+  labs(title = "Numeric Spread & Outliers by Churn", x = NULL, y = NULL) +
+  guides(fill = "none")
+
+```
+
+# Categorical Counts (Phone/Internet/Contract)
+
+```{r}
+#| echo: false
+
+cat_cols <- df_use |>
+  select(where(~ is.character(.x) || is.factor(.x))) |>
+  select(-Churn)  # analyze service mix separately from the label
+
+cat_long <- cat_cols |>
+  mutate(across(everything(), ~ fct_lump_n(factor(.x), n = 8, other_level = "Other"))) |>
+  pivot_longer(everything(), names_to = "feature", values_to = "level") |>
+  drop_na(level)
+
+ggplot(cat_long, aes(level)) +
+  geom_bar(fill = "#72B7B2") +
+  facet_wrap(~ feature, scales = "free_y", ncol = 2) +
+  coord_flip() +
+  labs(title = "Categorical Feature Counts", x = NULL, y = "Count")
+
+```
+
+# Categorical Proportions by Churn
+
+```{r}
+#| echo: false
+
+cat_long_churn <- df_use |>
+  select(Churn, where(~ is.character(.x) || is.factor(.x))) |>
+  mutate(across(-Churn, ~ fct_lump_n(factor(.x), n = 6, other_level = "Other"))) |>
+  pivot_longer(-Churn, names_to = "feature", values_to = "level") |>
+  drop_na(level, Churn)
+
+ggplot(cat_long_churn, aes(level, fill = Churn)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ feature, scales = "free_y", ncol = 2) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Categorical Proportions by Churn", x = NULL, y = "Percent", fill = "Churn")
+```
+
+# Missingness Overview
+
+```{r}
+missing_df <- df_use |>
+  summarise(across(everything(), ~ sum(is.na(.)))) |>
+  pivot_longer(everything(), names_to = "feature", values_to = "n_missing") |>
+  mutate(pct = n_missing / nrow(df_use))
+
+ggplot(missing_df, aes(reorder(feature, pct), pct)) +
+  geom_col(fill = "#E45756") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Missing Values by Feature", x = NULL, y = "Percent Missing")
+```
+
+# Skewness
+
+## Quick skew check (numeric)
+
+```{r}
+#| echo: false
+
+num_long |>
+  group_by(feature) |>
+  summarise(
+    n = sum(!is.na(value)),
+    mean = mean(value, na.rm = TRUE),
+    median = median(value, na.rm = TRUE),
+    sd = sd(value, na.rm = TRUE),
+    p99 = quantile(value, 0.99, na.rm = TRUE),
+    skew_hint = case_when(
+      median < mean ~ "Right-skewed",
+      median > mean ~ "Left-skewed",
+      TRUE ~ "Roughly symmetric"
+    )
+  ) |>
+  arrange(desc(abs(mean - median)))
+
+```
+
+## Skew check
+
+```{r}
+#| echo: false
+
+make_skew_plot <- function(df, feature) {
+  v <- df[[feature]]
+  d <- data.frame(value = v)
+
+  m   <- mean(v, na.rm = TRUE)
+  med <- median(v, na.rm = TRUE)
+  sdv <- sd(v, na.rm = TRUE)
+
+  skew <- if (is.na(sdv) || sdv == 0) NA_real_ else 3 * (m - med) / sdv
+  dir  <- if (m > med) "Right-skewed" else if (m < med) "Left-skewed" else "Symmetric"
+  label <- if (is.na(skew)) dir else sprintf("%s\nSkew ≈ %.2f", dir, skew)
+
+  lines <- data.frame(
+    stat_type  = c("Mean", "Median"),
+    xintercept = c(m, med)
+  )
+
+  ggplot(d, aes(value)) +
+    geom_density(fill = "#4C78A8", alpha = 0.3) +
+    geom_vline(
+      data = lines,
+      aes(xintercept = xintercept, color = stat_type, linetype = stat_type),
+      linewidth = 0.9
+    ) +
+    annotate("text", x = Inf, y = Inf, label = label, hjust = 1.05, vjust = 1.3, size = 3.5) +
+    labs(title = paste("Skewness:", feature), x = NULL, y = NULL,
+         color = "Statistic", linetype = "Statistic") +
+    scale_color_manual(values = c(Mean = "red", Median = "blue")) +
+    scale_linetype_manual(values = c(Mean = "dashed", Median = "dotted")) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "bottom", plot.margin = margin(10, 20, 10, 10))
+}
+
+# Examples (separate plots):
+p_age     <- make_skew_plot(df, "Age")
+p_tenure  <- make_skew_plot(df, "Tenure")
+p_monthly <- make_skew_plot(df, "MonthlyCharges")
+p_total   <- make_skew_plot(df, "TotalCharges")
+
+p_age; p_tenure; p_monthly; p_total
+```
+
+# Churn vs Non-Churn Proportions
+
+```{r}
+# Select the categorical features of interest
+cat_features <- c("Gender", "PhoneService", "InternetService", "Contract")
+
+cat_long_churn <- df_use %>%
+  select(Churn, all_of(cat_features)) %>%
+  pivot_longer(-Churn, names_to = "feature", values_to = "level") %>%
+  drop_na(level, Churn)
+```
+
+## Stacked bar (counts by category)
+
+```{r}
+#| echo: false
+
+ggplot(cat_long_churn, aes(level, fill = Churn)) +
+  geom_bar(position = "stack") +
+  facet_wrap(~ feature, scales = "free_x", ncol = 2) +
+  labs(
+    title = "Categorical Balances by Churn (Counts)",
+    x = NULL, y = "Count", fill = "Churn"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+```
+
+## Normalized bar (proportions within each category)
+
+```{r}
+#| echo: false
+
+ggplot(cat_long_churn, aes(level, fill = Churn)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ feature, scales = "free_x", ncol = 2) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Categorical Balances by Churn (Proportions)",
+    x = NULL, y = "Percent", fill = "Churn"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+```

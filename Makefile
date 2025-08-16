@@ -1,5 +1,5 @@
 # Paths to your processed data and schema
-DATA_PROCESSED = data/processed/telecom_churn_clean.csv
+DATA_PROCESSED = data/processed/customer_churn_data_clean.csv
 SCHEMA_FILE    = data/schema.json
 
 # Schema locking target (run once after cleaning)
