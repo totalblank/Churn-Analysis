@@ -27,8 +27,15 @@ format:
 
 ```{r, error=FALSE, message=FALSE, include=FALSE}
 library(tidyverse)
+library(showtext)
 
-theme_set(theme_minimal(base_size = 12))
+font_add(family = "Symbola", regular = "/usr/share/fonts/TTF/Symbola.ttf")
+showtext_auto()
+
+theme_set(
+  theme_minimal(base_size = 12) +
+    theme(text = element_text(family = "Symbola"))
+)
 
 ```
 
@@ -148,6 +155,8 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
 # Missingness Overview
 
 ```{r}
+#| echo: false
+
 missing_df <- df_use |>
   summarise(across(everything(), ~ sum(is.na(.)))) |>
   pivot_longer(everything(), names_to = "feature", values_to = "n_missing") |>
