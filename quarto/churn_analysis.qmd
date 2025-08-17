@@ -2,44 +2,64 @@
 title: "Customer Churn Analysis"
 author: "Aheer Srabon"
 date: today
-format:
-  pdf:
-    pdf-engine: xelatex
-    documentclass: report
-    toc: true
-    number-sections: true
-    geometry: margin=1in
-    fontsize: 11pt
-    mainfont: "Symbola"
-    monofont: "Fira Code"
-    colorlinks: true
-    include-in-header: header.tex
-  html:
-    toc: true
-    toc-depth: 2
-    number-sections: true
-    code-fold: true             # collapse/expand code blocks
-    theme: cosmo                # Bootswatch theme (cosmo, flatly, etc.)
+format: pdf
 ---
 
-```{r, error=FALSE, message=FALSE, include=FALSE}
-library(tidyverse)
-library(showtext)
+```{r}
+#| include: false
+#| echo: false
+#| error: false
+#| message: false
+#| label: setup
+
+ suppressPackageStartupMessages({
+  library(dplyr)
+  library(purrr)
+  library(tibble)
+  library(showtext)
+  library(tidymodels)
+  library(tidyverse)
+  library(knitr)
+  library(kableExtra)
+})
+
+source("../R/utils.R")
+
+knitr::opts_chunk$set(
+  echo = FALSE,     # hide code by default
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  fig.width = 6,
+  fig.height = 4,
+  dpi = 300
+)
 
 font_add(family = "Symbola", regular = "/usr/share/fonts/TTF/Symbola.ttf")
 showtext_auto()
+
+theme_report()
 
 theme_set(
   theme_minimal(base_size = 12) +
     theme(text = element_text(family = "Symbola"))
 )
+update_geom_defaults(
+  "text",
+  list(
+    family = "Symbola"
+  )
+)
+update_geom_defaults(
+  "label",
+  list(family = "Symbola")
+)
 
 ```
 
-# Numeric Distributions (Histograms)
+# Uni-variate & Distributional Analysis
 
 ```{r}
-#| echo: false
 
 df <- read.csv("../data/processed/customer_churn_data_clean.csv")
 
@@ -47,16 +67,23 @@ df <- read.csv("../data/processed/customer_churn_data_clean.csv")
 df_use <- df |>
   select(-X, -CustomerID)  # keep Churn, Age, Tenure, PhoneService, InternetService, Contract, MonthlyCharges, TotalCharges
 
-# Ensure churn is a factor with "No/Yes" levels per schema
-df_use <- df_use |>
-  mutate(Churn = factor(Churn, levels = c("No","Yes")))
+print_table(
+  summarize_df(df_use),
+  caption = "Summary of the Dataset",
+  name_style = "pretty"
+)
 
-names(df)
+df_use |> 
+  sample_n(10) |> 
+  print_table(
+    caption = "Random 10 samples from the dataset",
+    name_style = "pretty"
+  )
 ```
 
+## Numeric Distributions (Histograms)
+
 ```{r}
-#| message: false
-#| echo: false
 
 num_cols <- df_use |> 
   select(where(is.numeric))
@@ -68,50 +95,15 @@ ggplot(num_long, aes(value)) +
   geom_histogram(bins = 30, fill = "#4C78A8", alpha = 0.85, color = "white") +
   facet_wrap(~feature, scales = "free", ncol = 2) +
   labs(
-    title = "Numeric Feature Distributions",
-    subtitle = "Age, Tenure, MonthlyCharges, TotalCharges",
     x = NULL, y = "Count"
   )
 ```
 
-# Numeric Densities by Churn
+
+
+## Categorical Counts (Phone/Internet/Contract)
 
 ```{r}
-#| echo: false
-
-num_long_churn <- df_use |> 
-  select(Churn, where(is.numeric)) |> 
-  pivot_longer(-Churn, names_to = "feature", values_to = "value") |> 
-  drop_na(value)
-
-ggplot(num_long_churn, aes(value, fill = Churn)) +
-  geom_density(alpha = 0.35) +
-  facet_wrap(~feature, scale = "free", ncol = 2) +
-  labs(
-    title = "Numeric Densities by Churn",
-    x = NULL,
-    y = "Density",
-    fill = "Churn"
-  )
-```
-
-# Numeric Box Plots by Churn
-
-```{r}
-#| echo: false
-
-ggplot(num_long_churn, aes(x = Churn, y = value, fill = Churn)) +
-  geom_boxplot(outlier.alpha = 0.25, width = 0.7) +
-  facet_wrap(~ feature, scales = "free_y", ncol = 2) +
-  labs(title = "Numeric Spread & Outliers by Churn", x = NULL, y = NULL) +
-  guides(fill = "none")
-
-```
-
-# Categorical Counts (Phone/Internet/Contract)
-
-```{r}
-#| echo: false
 
 cat_cols <- df_use |>
   select(where(~ is.character(.x) || is.factor(.x))) |>
@@ -126,15 +118,13 @@ ggplot(cat_long, aes(level)) +
   geom_bar(fill = "#72B7B2") +
   facet_wrap(~ feature, scales = "free_y", ncol = 2) +
   coord_flip() +
-  labs(title = "Categorical Feature Counts", x = NULL, y = "Count")
+  labs(x = NULL, y = "Count")
 
 ```
 
-# Categorical Proportions by Churn
+## Categorical Proportions by Churn
 
 ```{r}
-#| echo: false
-
 cat_long_churn <- df_use |>
   select(Churn, where(~ is.character(.x) || is.factor(.x))) |>
   mutate(across(-Churn, ~ fct_lump_n(factor(.x), n = 6, other_level = "Other"))) |>
@@ -146,14 +136,16 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
   facet_wrap(~ feature, scales = "free_y", ncol = 2) +
   coord_flip() +
   scale_y_continuous(labels = scales::percent) +
-  labs(title = "Categorical Proportions by Churn", x = NULL, y = "Percent", fill = "Churn")
+  labs(x = NULL, y = "Percent", fill = "Churn")
 ```
 
-# Missingness Overview
+\newpage
+
+## Missingness Overview
+
+As can be seen from the following table, there is no missing data.
 
 ```{r}
-#| echo: false
-
 missing_df <- df_use |>
   summarise(across(everything(), ~ sum(is.na(.)))) |>
   pivot_longer(everything(), names_to = "feature", values_to = "n_missing") |>
@@ -166,13 +158,11 @@ ggplot(missing_df, aes(reorder(feature, pct), pct)) +
   labs(title = "Missing Values by Feature", x = NULL, y = "Percent Missing")
 ```
 
-# Skewness
+## Skewness
 
-## Quick skew check (numeric)
+### Quick skew check (numeric)
 
 ```{r}
-#| echo: false
-
 num_long |>
   group_by(feature) |>
   summarise(
@@ -187,49 +177,14 @@ num_long |>
       TRUE ~ "Roughly symmetric"
     )
   ) |>
-  arrange(desc(abs(mean - median)))
+  arrange(desc(abs(mean - median))) |> 
+  print_table(caption = "Skewness")
 
 ```
 
-## Skew check
+### Skew check
 
 ```{r}
-#| echo: false
-
-make_skew_plot <- function(df, feature) {
-  v <- df[[feature]]
-  d <- data.frame(value = v)
-
-  m   <- mean(v, na.rm = TRUE)
-  med <- median(v, na.rm = TRUE)
-  sdv <- sd(v, na.rm = TRUE)
-
-  skew <- if (is.na(sdv) || sdv == 0) NA_real_ else 3 * (m - med) / sdv
-  dir  <- if (m > med) "Right-skewed" else if (m < med) "Left-skewed" else "Symmetric"
-  label <- if (is.na(skew)) dir else sprintf("%s\nSkew ≈ %.2f", dir, skew)
-
-  lines <- data.frame(
-    stat_type  = c("Mean", "Median"),
-    xintercept = c(m, med)
-  )
-
-  ggplot(d, aes(value)) +
-    geom_density(fill = "#4C78A8", alpha = 0.3) +
-    geom_vline(
-      data = lines,
-      aes(xintercept = xintercept, color = stat_type, linetype = stat_type),
-      linewidth = 0.9
-    ) +
-    annotate("text", x = Inf, y = Inf, label = label, hjust = 1.05, vjust = 1.3, size = 3.5) +
-    labs(title = paste("Skewness:", feature), x = NULL, y = NULL,
-         color = "Statistic", linetype = "Statistic") +
-    scale_color_manual(values = c(Mean = "red", Median = "blue")) +
-    scale_linetype_manual(values = c(Mean = "dashed", Median = "dotted")) +
-    theme_minimal(base_size = 12) +
-    theme(legend.position = "bottom", plot.margin = margin(10, 20, 10, 10))
-}
-
-# Examples (separate plots):
 p_age     <- make_skew_plot(df, "Age")
 p_tenure  <- make_skew_plot(df, "Tenure")
 p_monthly <- make_skew_plot(df, "MonthlyCharges")
@@ -238,7 +193,7 @@ p_total   <- make_skew_plot(df, "TotalCharges")
 p_age; p_tenure; p_monthly; p_total
 ```
 
-# Churn vs Non-Churn Proportions
+## Churn vs Non-Churn Proportions
 
 ```{r}
 # Select the categorical features of interest
@@ -248,13 +203,18 @@ cat_long_churn <- df_use %>%
   select(Churn, all_of(cat_features)) %>%
   pivot_longer(-Churn, names_to = "feature", values_to = "level") %>%
   drop_na(level, Churn)
+
+cat_long_churn |> 
+  sample_n(5) |> 
+  print_table(
+    caption = "Categorical features of interest",
+    name_style = "pretty"
+  )
 ```
 
-## Stacked bar (counts by category)
+### Stacked bar (counts by category)
 
 ```{r}
-#| echo: false
-
 ggplot(cat_long_churn, aes(level, fill = Churn)) +
   geom_bar(position = "stack") +
   facet_wrap(~ feature, scales = "free_x", ncol = 2) +
@@ -266,11 +226,9 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
   theme(axis.text.x = element_text(angle = 20, hjust = 1))
 ```
 
-## Normalized bar (proportions within each category)
+### Normalized bar (proportions within each category)
 
 ```{r}
-#| echo: false
-
 ggplot(cat_long_churn, aes(level, fill = Churn)) +
   geom_bar(position = "fill") +
   facet_wrap(~ feature, scales = "free_x", ncol = 2) +
@@ -281,4 +239,191 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
   ) +
   theme_minimal(base_size = 12) +
   theme(axis.text.x = element_text(angle = 20, hjust = 1))
+```
+
+# Bivariate (Churn vs. Features)
+
+```{r}
+#| label: helpers
+
+# Ensure types
+df_use <- df_use %>%
+  mutate(
+    Churn = factor(Churn, levels = c("No","Yes")),
+    Contract = factor(Contract),
+    InternetService = factor(InternetService)
+  )
+
+# Generic helper: churn rate + 95% CI by categorical feature
+# Because churn rate is an estimate from data, we add 95%
+# confidence interval using the Wilson method. 
+churn_rate_by <- function(data, feature) {
+  f <- enquo(feature)
+  data %>%
+    group_by(!!f) %>%
+    summarise(
+      churn_yes = sum(Churn == "Yes", na.rm = TRUE),
+      n = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(ci = map2(churn_yes, n, prop_ci_wilson)) %>%
+    tidyr::unnest_wider(ci) %>%
+    rename(level = !!f)
+}
+
+# Small effect-size helpers
+cramer_v <- function(tab) {
+  chi2 <- suppressWarnings(chisq.test(tab)$statistic)
+  n <- sum(tab); k <- min(nrow(tab), ncol(tab))
+  as.numeric(sqrt(chi2 / (n * (k - 1))))
+}
+cohens_d <- function(x, y) {
+  m1 <- mean(x, na.rm=TRUE); m2 <- mean(y, na.rm=TRUE)
+  s1 <- sd(x, na.rm=TRUE);  s2 <- sd(y, na.rm=TRUE)
+  n1 <- sum(!is.na(x));     n2 <- sum(!is.na(y))
+  s_p <- sqrt(((n1-1)*s1^2 + (n2-1)*s2^2) / (n1 + n2 - 2))
+  (m2 - m1) / s_p
+}
+```
+
+## Churn rate by `Tenure` bins (0-6, 6-12, 12-24, 24-48, 48+)
+
+`Tenure` is how long a customer has been with the company (in months). Following is the hypothesis,
+
+::: {style="text-align: center; width: 50%"}
+Customer who are **new** (short tenure) are more likely to churn; customers who have stayed longer are "stickier"
+:::
+
+To test this,
+
+1.  Group customers into **bins** of tenure (0-6 months, 6-12, etc.).
+2.  Compute **churn rate** = (# churned customers) / (total customers) in each bin.
+3.  Plot churn rate across bins to visualize patterns.
+
+If churn is very high in 0-6 months bin, that means the company has an **onboarding / early experience** problem.
+
+```{r}
+# convert Tenure into a categorical `bin` variable
+df_tenure <- df_use %>%
+  mutate(
+    tenure_bin = cut(
+      Tenure,
+      breaks = c(0, 6, 12, 24, 48, Inf),
+      labels = c("0–6", "6–12", "12–24", "24–48", "48+"),
+      right = TRUE,
+      include.lowest = TRUE
+    )
+  )
+
+# now each customer is tagged with a tenure_bin value (e.g., "0-6")
+df_tenure |> 
+  select(Gender, Age, Contract, tenure_bin) |> 
+  sample_n(5) |> 
+  print_table(
+    caption = "Data Frame with Tenure Bin tags",
+    name_style = "pretty"
+  )
+```
+
+-   `n` = number of customers
+
+-   `churn_yes` = number of churned customers
+
+-   `p` = `churn_yes` / `n` = churn proportion
+
+```{r}
+# pass df_tenure into churn_rate_by
+tenure_stats <- churn_rate_by(df_tenure, tenure_bin)
+
+tenure_stats |> 
+  print_table(caption = "Tenure statistics", name_style = "none")
+```
+
+Because churn rate is an estimate from data, we add 95% confidence interval using the Wilson method.
+
+```{r}
+# plot
+ggplot(tenure_stats, aes(x = level, y = p)) +
+  geom_col(fill = "#4C78A8", alpha = 0.9) +
+  geom_errorbar(aes(ymin = p_lo, ymax = p_hi), width = 0.15) +
+  # Add churn % labels above bars
+  geom_text(
+    aes(label = scales::percent(p, accuracy = 1)),
+    vjust = -1,               # position slightly above bar
+    hjust = 1.25,
+    size = 4,
+  ) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0.1))) +
+  labs(
+    title = "Churn Rate by Tenure Bin (95% CI)",
+    x = "Tenure (months)", y = "Churn rate"
+  ) 
+```
+
+## Contract Type vs. Churn
+
+Goal: Show how churn differs by contract type. Hypothesis: Month-to-month has higher churn than One/Two year contracts.
+
+```{r}
+df_use |> 
+  group_by(Contract, Churn) |> 
+  summarise(n = n(), .groups = "drop") |> 
+  group_by(Contract) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(x = Contract, y = prop, fill = Churn)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
+            position = position_dodge(width = 0.9), vjust = -0.25, size = 3) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Churn Proportion by Contract Type",
+       x = "Contract Type", y = "Proportion")
+```
+
+## Internet Service vs. Churn
+
+Goal: Compare churn across DSL / Fiber optic / No Internet.
+
+```{r}
+df_use |> 
+  group_by(InternetService, Churn) |> 
+  summarise(n = n(), .groups = "drop") |> 
+  group_by(InternetService) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(x = InternetService, y = prop, fill = Churn)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
+            position = position_dodge(width = 0.9), vjust = -0.25, size = 3) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Churn Proportion by Internet Service",
+       x = "Internet Service", y = "Proportion")
+```
+
+## Numeric Densities by Churn
+
+```{r}
+num_long_churn <- df_use |> 
+  select(Churn, where(is.numeric)) |> 
+  pivot_longer(-Churn, names_to = "feature", values_to = "value") |> 
+  drop_na(value)
+
+ggplot(num_long_churn, aes(value, fill = Churn)) +
+  geom_density(alpha = 0.35) +
+  facet_wrap(~feature, scale = "free", ncol = 2) +
+  labs(
+    x = NULL,
+    y = "Density",
+    fill = "Churn"
+  )
+```
+
+## Numeric Box Plots by Churn
+
+```{r}
+ggplot(num_long_churn, aes(x = Churn, y = value, fill = Churn)) +
+  geom_boxplot(outlier.alpha = 0.25, width = 0.7) +
+  facet_wrap(~ feature, scales = "free_y", ncol = 2) +
+  labs(x = NULL, y = NULL) +
+  guides(fill = "none")
+
 ```

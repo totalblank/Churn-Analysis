@@ -1,0 +1,23 @@
+project: 
+  type: default
+
+format:
+  pdf:
+    pdf-engine: xelatex
+    documentclass: report
+    toc: true
+    number-sections: true
+    geometry: margin=1in
+    fontsize: 11pt
+    fig-align: center
+    mainfont: "Symbola"
+    monofont: "Fira Code"
+    colorlinks: true
+    df-print: tibble
+    include-in-header: header.tex
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-fold: true             # collapse/expand code blocks
+    theme: cosmo                # Bootswatch theme (cosmo, flatly, etc.)
