@@ -4,19 +4,16 @@ author: "Aheer Srabon"
 date: today
 format:
   pdf:
-    documentclass: article     # "article", "book", or "beamer" also possible
-    toc: true                  # table of contents
-    toc-depth: 2               # how deep headings appear in TOC
-    number-sections: true      # number the section headers
-    geometry: margin=1in       # control page margins
-    fontsize: 11pt             # font size (10pt, 11pt, 12pt)
-    mainfont: "Symbola" # requires xelatex/lualatex
-    monofont: "Fira Code"       # font for code
-    colorlinks: true            # colored links instead of boxes
-    fig-pos: "H"                # place figures exactly where they appear
-    fig-width: 6                # default figure width (in inches)
-    fig-height: 4               # default figure height
-    df-print: kable             # nice tables
+    pdf-engine: xelatex
+    documentclass: report
+    toc: true
+    number-sections: true
+    geometry: margin=1in
+    fontsize: 11pt
+    mainfont: "Symbola"
+    monofont: "Fira Code"
+    colorlinks: true
+    include-in-header: header.tex
   html:
     toc: true
     toc-depth: 2
