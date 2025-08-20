@@ -21,9 +21,16 @@ format: pdf
   library(tidyverse)
   library(knitr)
   library(kableExtra)
+  library(reshape2)
+  library(ggcorrplot)
+  library(viridis)
+  library(rstatix)
+  library(DescTools)
+  library(FSelectorRcpp)
 })
 
 source("../R/utils.R")
+source("../R/theme.R")
 
 knitr::opts_chunk$set(
   echo = FALSE,     # hide code by default
@@ -98,8 +105,6 @@ ggplot(num_long, aes(value)) +
     x = NULL, y = "Count"
   )
 ```
-
-
 
 ## Categorical Counts (Phone/Internet/Contract)
 
@@ -222,8 +227,7 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
     title = "Categorical Balances by Churn (Counts)",
     x = NULL, y = "Count", fill = "Churn"
   ) +
-  theme_minimal(base_size = 12) +
-  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+  theme(axis.text.x = element_text(angle = 20, hjust = 0.5))
 ```
 
 ### Normalized bar (proportions within each category)
@@ -237,8 +241,7 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
     title = "Categorical Balances by Churn (Proportions)",
     x = NULL, y = "Percent", fill = "Churn"
   ) +
-  theme_minimal(base_size = 12) +
-  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+  theme(axis.text.x = element_text(angle = 20, hjust = 0.5, vjust = 0.05))
 ```
 
 # Bivariate (Churn vs. Features)
@@ -426,4 +429,209 @@ ggplot(num_long_churn, aes(x = Churn, y = value, fill = Churn)) +
   labs(x = NULL, y = NULL) +
   guides(fill = "none")
 
+```
+
+## Numeric Violin Plots by Churn
+
+```{r}
+ggplot(num_long_churn, aes(x = Churn, y = value, fill = Churn)) +
+  geom_violin(outlier.alpha = 0.25, width = 0.7) +
+  facet_wrap(~ feature, scales = "free_y", ncol = 2) +
+  labs(x = NULL, y = NULL) +
+  guides(fill = "none")
+```
+
+# Multivariate Relationships
+
+## Age x Tenure x Churn
+
+```{r}
+ df_use_3 <- df_use |> 
+  mutate(
+    AgeGroup = cut(
+      Age,
+      breaks = c(18, 30, 50, 80),
+      labels = c("<30", "30-50", "50+")
+    )
+  )
+
+df_use_3 |> 
+  sample_n(5) |> 
+  print_table(caption = "Data for `Tenure Distribution by Age Group and Churn'")
+
+```
+
+Following plot shows distributions of Tenure across age groups and split by Churn,
+
+```{r}
+df_use_3 |> 
+  ggplot(aes(x = Tenure, fill = Churn)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ AgeGroup) +
+  labs(title = "Tenure Distribution by Age Group and Churn")
+```
+
+For extra clarity, following is a Heatmap,
+
+```{r}
+# Dynamic breaks that cover full data
+age_breaks <- seq(floor(min(df$Age)), ceiling(max(df$Age)), by = 10)
+tenure_breaks <- c(0, 6, 12, 24, 48, 72, Inf)  # Inf ensures top values included
+
+heatmap_data <- df %>%
+  mutate(
+    AgeBin = cut(Age, breaks = age_breaks, include.lowest = TRUE, right = FALSE),
+    TenureBin = cut(Tenure, breaks = tenure_breaks, include.lowest = TRUE, right = FALSE)
+  ) %>%
+  group_by(AgeBin, TenureBin) %>%
+  summarize(ChurnRate = mean(Churn == "Yes"), .groups = "drop")
+
+heatmap_data |> 
+  sample_n(5) |> 
+  print_table()
+
+
+heatmap_data |> 
+  ggplot(aes(x = TenureBin, y = AgeBin, fill = ChurnRate)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title = "Churn Rate Heattmap by Age x Tenure", fill = "Churn Rate")
+```
+
+## MonthlyCharges x Contract x Churn
+
+```{r}
+ggplot(df_use, aes(x = Contract, y = MonthlyCharges, fill = Churn)) +
+  geom_boxplot() +
+  labs(title = "Monthly Charges by Contract and Churn")
+```
+
+## InternetService x Contract (churn risk heatmap)
+
+```{r}
+heat_data <- df_use |> 
+  group_by(InternetService, Contract) |> 
+  summarize(churn_rate = mean(Churn == "Yes")) |> 
+  ungroup()
+
+heat_data |> 
+  ggplot(aes(x = Contract, y = InternetService, fill = churn_rate)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title = "Churn Risk by Internet Service and Contract", fill = "Churn Rate")
+```
+
+# Feature Engineering for EDA
+
+## Customer lifetime value proxy
+
+```{r}
+df_use_1 <- df_use |> 
+  mutate(CLTV = MonthlyCharges * Tenure)
+
+df_use_1 |> 
+  sample_n(5) |> 
+  print_table()
+
+df_use_1 |> 
+  ggplot(aes(x = Churn, y = CLTV, fill = Churn)) +
+  geom_violin() +
+  labs(title = "Customer Lifetime Value (CLTV) vs Churn")
+```
+
+## At-risk cohorts (cohort flagging)
+
+Create a derived feature for risk segments,
+
+```{r}
+df_use_2 <- df_use |> 
+  mutate(RiskCohort = case_when(
+    Contract == "Month-to-month" & Tenure < 12 & MonthlyCharges > 70 ~ "High Risk",
+    T ~ "Low/Mediium Risk"
+  ))
+
+df_use_2 |> 
+  ggplot(aes(x = RiskCohort, fill = Churn)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Churn Rate by Risk Cohorts")
+```
+
+# Correlation & Association
+
+## Numeric-only correlation matrix
+
+```{r}
+num_vars <- c("Age","Tenure","MonthlyCharges","TotalCharges")
+
+df_num <- df_use |> 
+  select(all_of(num_vars)) |> 
+  mutate(across(everything(), as.numeric))
+
+cor_mat  <- cor(df_num, use = "pairwise.complete.obs", method = "pearson")
+
+ggcorrplot(cor_mat,
+           hc.order = TRUE,
+           type = "lower",
+           lab = TRUE,
+           lab_size = 3,
+           colors = c("#d8b365", "white", "#5ab4ac"),  # muted earthy tones
+           outline.color = "gray50") +
+  theme_minimal(base_size = 12) +
+    theme(text = element_text(family = "Symbola"))
+
+```
+
+## Chi-square + Cramer’s V for categorical vs. Churn
+
+```{r}
+# Pick categorical predictors you care about:
+cat_vars <- c("Gender","PhoneService","InternetService","Contract") # add more as needed
+
+chi_cramer_tbl <- map_dfr(cat_vars, function(v) {
+  tbl <- table(df[[v]], df$Churn)
+  suppressWarnings({
+    chi <- chisq.test(tbl)
+  })
+  tibble(
+    variable   = v,
+    chisq_stat = unname(chi$statistic),
+    df         = unname(chi$parameter),
+    p_value    = chi$p.value,
+    cramers_v  = CramerV(tbl, bias.correct = TRUE)
+  )
+}) |> 
+  arrange(p_value)
+
+print_table(chi_cramer_tbl, caption = "Cramér’s V - Effect size measure")
+```
+
+Which shows that, to predict churn, Contract is a strong (because of low p_value) predictor. Next up are, Gender, PhoneService, and InternetService.
+
+## Mutual information (any type $\rightarrow$ Churn)
+
+Mutual Information is a great way to rank all features (numeric + categorical) together by how much they help explain churn. It complements correlation, Chi-square, and Cramér’s V by giving a unified importance measure.
+
+```{r}
+# Compute MI for all features (drop ID-like columns if present)
+features_for_mi <- setdiff(names(df), c("Churn","customerID","CustomerID","id","ID"))
+
+mi_tbl <- information_gain(
+  formula = reformulate(termlabels = features_for_mi, response = "Churn"),
+  data    = df |> mutate(across(all_of(features_for_mi), ~ .x)) # pass-through
+) |> arrange(desc(importance))
+
+mi_tbl |> 
+  head(4) |> 
+  print_table("Importance of variables", digits = 6)
+```
+
+```{r}
+mi_tbl %>%
+  slice_max(order_by = importance, n = 15) %>%
+  ggplot(aes(x = reorder(attributes, importance), y = importance)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Mutual Information with Churn",
+       x = "Feature", y = "Information Gain (MI)")
 ```
