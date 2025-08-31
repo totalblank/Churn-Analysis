@@ -2,7 +2,16 @@
 title: "Customer Churn Analysis"
 author: "Aheer Srabon"
 date: today
-format: pdf
+format:
+  # html:
+    # page-layout: full
+    # theme: cosmo        # any Bootstrap theme you like
+    # df-print: paged
+  pdf:
+    pdf-engine: lualatex
+execute:
+  warning: false
+  message: false
 ---
 
 ```{r}
@@ -32,36 +41,54 @@ format: pdf
 source("../R/utils.R")
 source("../R/theme.R")
 
+font_add("Symbola", "/usr/share/fonts/TTF/Symbola.ttf")
+showtext_auto()
+
 knitr::opts_chunk$set(
   echo = FALSE,     # hide code by default
   message = FALSE,
   warning = FALSE,
   fig.align = "center",
   fig.width = 6,
-  fig.height = 4,
-  dpi = 300
+  fig.height = 4
 )
 
-font_add(family = "Symbola", regular = "/usr/share/fonts/TTF/Symbola.ttf")
-showtext_auto()
-
-theme_report()
-
-theme_set(
-  theme_minimal(base_size = 12) +
-    theme(text = element_text(family = "Symbola"))
-)
-update_geom_defaults(
-  "text",
-  list(
-    family = "Symbola"
+if (knitr::is_latex_output()) {
+  
+  # device for plots inside the doc
+  knitr::opts_chunk$set(dev = "cairo_pdf")
+  
+  showtext_auto()
+  
+  theme_set(
+    theme_minimal(base_size = 14, base_family = "Symbola") +
+      theme(
+        plot.title   = element_text(face = "bold", size = 16, hjust = 0.5),
+        axis.title   = element_text(size = 14),
+        axis.text    = element_text(size = 12),
+        legend.title = element_text(size = 13),
+        legend.text  = element_text(size = 11)
+      )
   )
-)
-update_geom_defaults(
-  "label",
-  list(family = "Symbola")
-)
+}
 
+if (knitr::is_html_output()) {
+  theme_set(
+    theme_minimal(base_size = 20) +  # bump base_size (try 16–18 for HTML)
+      theme(
+        plot.title   = element_text(face = "bold", size = 20, hjust = 0.5),
+        axis.title   = element_text(size = 16),
+        axis.text    = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.text  = element_text(size = 13)
+      )
+  )
+  knitr::opts_chunk$set(
+    fig.width  = 8,   # in inches
+    fig.height = 5,
+    dpi        = 120  # controls sharpness
+  ) 
+}
 ```
 
 # Uni-variate & Distributional Analysis
@@ -103,7 +130,7 @@ ggplot(num_long, aes(value)) +
   facet_wrap(~feature, scales = "free", ncol = 2) +
   labs(
     x = NULL, y = "Count"
-  )
+  ) + theme_minimal() + latex_font_theme()
 ```
 
 ## Categorical Counts (Phone/Internet/Contract)
@@ -123,8 +150,8 @@ ggplot(cat_long, aes(level)) +
   geom_bar(fill = "#72B7B2") +
   facet_wrap(~ feature, scales = "free_y", ncol = 2) +
   coord_flip() +
-  labs(x = NULL, y = "Count")
-
+  labs(x = NULL, y = "Count") +
+  latex_font_theme()
 ```
 
 ## Categorical Proportions by Churn
@@ -141,10 +168,9 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
   facet_wrap(~ feature, scales = "free_y", ncol = 2) +
   coord_flip() +
   scale_y_continuous(labels = scales::percent) +
-  labs(x = NULL, y = "Percent", fill = "Churn")
+  labs(x = NULL, y = "Percent", fill = "Churn") +
+  latex_font_theme()
 ```
-
-\newpage
 
 ## Missingness Overview
 
@@ -160,7 +186,8 @@ ggplot(missing_df, aes(reorder(feature, pct), pct)) +
   geom_col(fill = "#E45756") +
   coord_flip() +
   scale_y_continuous(labels = scales::percent) +
-  labs(title = "Missing Values by Feature", x = NULL, y = "Percent Missing")
+  labs(title = "Missing Values by Feature", x = NULL, y = "Percent Missing") +
+  latex_font_theme()
 ```
 
 ## Skewness
@@ -184,7 +211,6 @@ num_long |>
   ) |>
   arrange(desc(abs(mean - median))) |> 
   print_table(caption = "Skewness")
-
 ```
 
 ### Skew check
@@ -195,7 +221,7 @@ p_tenure  <- make_skew_plot(df, "Tenure")
 p_monthly <- make_skew_plot(df, "MonthlyCharges")
 p_total   <- make_skew_plot(df, "TotalCharges")
 
-p_age; p_tenure; p_monthly; p_total
+p_age + latex_font_theme(); p_tenure + latex_font_theme(); p_monthly + latex_font_theme(); p_total + latex_font_theme()
 ```
 
 ## Churn vs Non-Churn Proportions
@@ -227,7 +253,8 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
     title = "Categorical Balances by Churn (Counts)",
     x = NULL, y = "Count", fill = "Churn"
   ) +
-  theme(axis.text.x = element_text(angle = 20, hjust = 0.5))
+  latex_font_theme() +
+  theme(axis.text.x = element_text(size = 8, angle = 20, hjust = 0.5))
 ```
 
 ### Normalized bar (proportions within each category)
@@ -241,7 +268,7 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
     title = "Categorical Balances by Churn (Proportions)",
     x = NULL, y = "Percent", fill = "Churn"
   ) +
-  theme(axis.text.x = element_text(angle = 20, hjust = 0.5, vjust = 0.05))
+  theme(axis.text.x = element_text(angle = 20, hjust = 0.5, size = 8))
 ```
 
 # Bivariate (Churn vs. Features)
@@ -553,8 +580,7 @@ df_use_2 <- df_use |>
 df_use_2 |> 
   ggplot(aes(x = RiskCohort, fill = Churn)) +
   geom_bar(position = "fill") +
-  scale_y_continuous(labels = scales::percent) +
-  labs(title = "Churn Rate by Risk Cohorts")
+  scale_y_continuous(labels = scales::percent)
 ```
 
 # Correlation & Association
@@ -576,10 +602,7 @@ ggcorrplot(cor_mat,
            lab = TRUE,
            lab_size = 3,
            colors = c("#d8b365", "white", "#5ab4ac"),  # muted earthy tones
-           outline.color = "gray50") +
-  theme_minimal(base_size = 12) +
-    theme(text = element_text(family = "Symbola"))
-
+           outline.color = "gray50") + latex_font_theme()
 ```
 
 ## Chi-square + Cramer’s V for categorical vs. Churn
@@ -632,6 +655,44 @@ mi_tbl %>%
   ggplot(aes(x = reorder(attributes, importance), y = importance)) +
   geom_col(fill = "steelblue") +
   coord_flip() +
-  labs(title = "Mutual Information with Churn",
-       x = "Feature", y = "Information Gain (MI)")
+  labs(
+    x = "Feature",
+    y = "Information Gain (MI)"
+  )
+```
+
+# Survival-style Analysis
+
+```{r}
+library(survival)
+library(survminer)
+
+# Create survival object
+surv_obj <- Surv(time = df_use$Tenure, event = df_use$Churn == "Yes")
+
+# Kaplan–Meier by contract type
+fit <- survfit(surv_obj ~ Contract, data = df_use)
+
+# Plot
+p <- ggsurvplot(
+  fit, 
+  data = df_use, 
+  risk.table = TRUE, 
+  pval = TRUE,
+  pval.size = 3,
+  xlab = "Tenure (months)",
+  ylab = "Survival Probability (not churned)",
+  legend.title = "Contract Type",
+  
+  # give the table breathing room
+  risk.table.height = 0.3,       # try 0.24–0.32
+  risk.table.y.text = TRUE,       # show group labels on the left
+  risk.table.y.text.col = TRUE,   # color labels by strata
+  break.time.by = 6,              # fewer columns reduces crowding
+  tables.theme = theme_cleantable(),
+  
+  ggtheme = theme_minimal() + latex_font_theme()
+)
+
+p$plot;p$table
 ```

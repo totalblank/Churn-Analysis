@@ -1,13 +1,35 @@
 # utility functions
 
-theme_report <- function() {
-  theme_minimal(base_family = "Symbola") +
-    theme(
-      plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-      axis.title = element_text(size = 12),
-      axis.text  = element_text(size = 10),
-      legend.position = "bottom"
-    )
+#' Add a PDF-only font theme to a ggplot
+#' Usage: ggplot(...) + latex_font_theme(base_size = 14, family = "Symbola", face = "plain")
+latex_font_theme <- function(base_size  = 14,
+                             family     = "Symbola",   # e.g. "Symbola" or "Times New Roman"
+                             face       = "plain",
+                             title_mult = 1.2,
+                             axis_mult  = 1.0,
+                             legend_mult= 0.7,
+                             enable     = NULL,  # override detection; TRUE/FALSE
+                             verbose    = FALSE) {
+  # Decide whether we're in LaTeX/PDF context
+  if (is.null(enable)) {
+    # TRUE when knitting to PDF; FALSE for HTML/Word; also FALSE when used outside knitr
+    enable <- tryCatch(knitr::is_latex_output(), error = function(...) FALSE)
+  }
+  if (!enable) {
+    if (verbose) message("latex_font_theme: not LaTeX output -> returning empty theme()")
+    return(ggplot2::theme())  # no changes (HTML path)
+  }
+  
+  # Build the theme (PDF path)
+  if (verbose) message("latex_font_theme: LaTeX output detected -> applying font theme")
+  ggplot2::theme(
+    text         = ggplot2::element_text(size = base_size, family = family, face = face),
+    plot.title   = ggplot2::element_text(size = base_size * title_mult, face = "bold"),
+    axis.title   = ggplot2::element_text(size = base_size * axis_mult,  face = face),
+    axis.text    = ggplot2::element_text(size = base_size * (axis_mult * 0.9), face = face),
+    legend.title = ggplot2::element_text(size = base_size * legend_mult,      face = face),
+    legend.text  = ggplot2::element_text(size = base_size * (legend_mult*0.9), face = face)
+  )
 }
 
 summarize_df <- function(df) {
@@ -115,12 +137,15 @@ print_table <- function(
   # ----- HTML path -----
   if (is_html) {
     out <- kb |>
-      kableExtra::kable_styling(full_width = FALSE,
-                                bootstrap_options = c("striped", "hover"))
+      kableExtra::kable_styling(
+        full_width = FALSE,
+        bootstrap_options = c("striped", "hover")
+      )
+    # use kableExtra's scroll_box instead of manual div (adds proper html deps)
     if (ncol(df) > 8) {
-      out <- htmltools::div(style = "overflow-x:auto; width:100%;", out)
+      out <- kableExtra::scroll_box(out, width = "100%", height = "auto")
     }
-    return(out)
+    return(htmltools::browsable(out))  # <- key: ensures knitr treats it as HTML
   }
   
   # ----- PDF path -----
