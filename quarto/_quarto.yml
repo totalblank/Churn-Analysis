@@ -1,23 +1,48 @@
 project: 
-  type: default
-
+  type: website
+  
+website:
+  title: "Churn Analysis"
+  navbar:
+    left:
+      - href: churn_analysis.qmd
+        text: Home
+        
 format:
   pdf:
-    pdf-engine: xelatex
+    pdf-engine: lualatex
     documentclass: report
+    include-in-header: header.tex
     toc: true
     number-sections: true
     geometry: margin=1in
     fontsize: 11pt
-    fig-align: center
     mainfont: "Symbola"
     monofont: "Fira Code"
     colorlinks: true
     df-print: tibble
-    include-in-header: header.tex
+    
+    fig-align: center
+    fig-width: 12
+    fig-height: 8
+    
   html:
     toc: true
     toc-depth: 2
+    page-layout: full
     number-sections: true
     code-fold: true             # collapse/expand code blocks
     theme: cosmo                # Bootswatch theme (cosmo, flatly, etc.)
+    
+    fig-format: retina
+    fig-align: center
+    fig-width: 12
+    fig-height: 8
+    
+execute:
+  cache: true
+  freeze: auto
+  warning: false
+  message: false
+  echo: false
+  error: false

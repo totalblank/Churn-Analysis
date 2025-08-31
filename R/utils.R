@@ -1,35 +1,64 @@
 # utility functions
 
-#' Add a PDF-only font theme to a ggplot
-#' Usage: ggplot(...) + latex_font_theme(base_size = 14, family = "Symbola", face = "plain")
-latex_font_theme <- function(base_size  = 14,
-                             family     = "Symbola",   # e.g. "Symbola" or "Times New Roman"
-                             face       = "plain",
-                             title_mult = 1.2,
-                             axis_mult  = 1.0,
-                             legend_mult= 0.7,
-                             enable     = NULL,  # override detection; TRUE/FALSE
-                             verbose    = FALSE) {
-  # Decide whether we're in LaTeX/PDF context
-  if (is.null(enable)) {
-    # TRUE when knitting to PDF; FALSE for HTML/Word; also FALSE when used outside knitr
-    enable <- tryCatch(knitr::is_latex_output(), error = function(...) FALSE)
-  }
-  if (!enable) {
-    if (verbose) message("latex_font_theme: not LaTeX output -> returning empty theme()")
-    return(ggplot2::theme())  # no changes (HTML path)
+#' Output-aware font theme for ggplot (PDF and HTML)
+#' Usage: ggplot(...) + latex_font_theme(base_size = 14, family = "Symbola")
+font_theme <- function(
+  # PDF / LaTeX settings
+  base_size   = 14,
+  family      = "Symbola",
+  face        = "plain",
+  title_mult  = 1.2,
+  axis_mult   = 1.0,
+  legend_mult = 0.7,
+  
+  # HTML settings (separate so screens can be larger)
+  html_base_size   = 18,
+  html_family      = "Inter",      # e.g. "Inter" (NULL = ggplot default)
+  html_face        = "plain",
+  html_title_mult  = 1.25,
+  html_axis_mult   = 1.0,
+  html_legend_mult = 0.85,
+  
+  # Control detection / verbosity
+  mode    = c("auto", "latex", "html", "none"),  # force behavior if needed
+  verbose = FALSE
+) {
+  mode <- match.arg(mode)
+  
+  # Detect output if auto
+  is_pdf  <- isFALSE(mode != "auto") && tryCatch(knitr::is_latex_output(), error = function(...) FALSE)
+  is_html <- isFALSE(mode != "auto") && tryCatch(knitr::is_html_output(),  error = function(...) FALSE)
+  
+  if (mode == "latex") { is_pdf <- TRUE;  is_html <- FALSE }
+  if (mode == "html")  { is_pdf <- FALSE; is_html <- TRUE  }
+  if (mode == "none")  { is_pdf <- FALSE; is_html <- FALSE }
+  
+  if (is_pdf) {
+    if (verbose) message("latex_font_theme: applying PDF/LaTeX theme")
+    return(ggplot2::theme(
+      text         = ggplot2::element_text(size = base_size, family = family, face = face),
+      plot.title   = ggplot2::element_text(size = base_size * title_mult, face = "bold"),
+      axis.title   = ggplot2::element_text(size = base_size * axis_mult,  face = face),
+      axis.text    = ggplot2::element_text(size = base_size * (axis_mult * 0.9), face = face),
+      legend.title = ggplot2::element_text(size = base_size * legend_mult,      face = face),
+      legend.text  = ggplot2::element_text(size = base_size * (legend_mult * 0.9), face = face)
+    ))
   }
   
-  # Build the theme (PDF path)
-  if (verbose) message("latex_font_theme: LaTeX output detected -> applying font theme")
-  ggplot2::theme(
-    text         = ggplot2::element_text(size = base_size, family = family, face = face),
-    plot.title   = ggplot2::element_text(size = base_size * title_mult, face = "bold"),
-    axis.title   = ggplot2::element_text(size = base_size * axis_mult,  face = face),
-    axis.text    = ggplot2::element_text(size = base_size * (axis_mult * 0.9), face = face),
-    legend.title = ggplot2::element_text(size = base_size * legend_mult,      face = face),
-    legend.text  = ggplot2::element_text(size = base_size * (legend_mult*0.9), face = face)
-  )
+  if (is_html) {
+    if (verbose) message("latex_font_theme: applying HTML theme")
+    return(ggplot2::theme(
+      text         = ggplot2::element_text(size = html_base_size, family = html_family, face = html_face),
+      plot.title   = ggplot2::element_text(size = html_base_size * html_title_mult, face = "plain"),
+      axis.title   = ggplot2::element_text(size = html_base_size * html_axis_mult,  face = html_face),
+      axis.text    = ggplot2::element_text(size = html_base_size * (html_axis_mult * 0.9), face = html_face),
+      legend.title = ggplot2::element_text(size = html_base_size * html_legend_mult,      face = html_face),
+      legend.text  = ggplot2::element_text(size = html_base_size * (html_legend_mult * 0.9), face = html_face)
+    ))
+  }
+  
+  if (verbose) message("latex_font_theme: no special output detected -> returning empty theme()")
+  ggplot2::theme()  # no-op (e.g., when not knitting)
 }
 
 summarize_df <- function(df) {
@@ -191,7 +220,7 @@ make_skew_plot <- function(df, feature) {
       aes(xintercept = xintercept, color = stat_type, linetype = stat_type),
       linewidth = 0.9
     ) +
-    annotate("text", x = Inf, y = Inf, label = label, hjust = 1.05, vjust = 1.3, size = 3.5) +
+    annotate("text", x = Inf, y = Inf, label = label, hjust = 1.05, vjust = 1.3) +
     labs(title = feature, x = NULL, y = NULL,
          color = "Statistic", linetype = "Statistic") +
     scale_color_manual(values = c(Mean = "red", Median = "blue")) +

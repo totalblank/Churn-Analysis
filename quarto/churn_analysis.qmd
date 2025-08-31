@@ -2,24 +2,12 @@
 title: "Customer Churn Analysis"
 author: "Aheer Srabon"
 date: today
-format:
-  # html:
-    # page-layout: full
-    # theme: cosmo        # any Bootstrap theme you like
-    # df-print: paged
-  pdf:
-    pdf-engine: lualatex
-execute:
-  warning: false
-  message: false
+format: html
 ---
 
 ```{r}
-#| include: false
-#| echo: false
-#| error: false
-#| message: false
 #| label: setup
+#| include: false
 
  suppressPackageStartupMessages({
   library(dplyr)
@@ -44,50 +32,33 @@ source("../R/theme.R")
 font_add("Symbola", "/usr/share/fonts/TTF/Symbola.ttf")
 showtext_auto()
 
-knitr::opts_chunk$set(
-  echo = FALSE,     # hide code by default
-  message = FALSE,
-  warning = FALSE,
-  fig.align = "center",
-  fig.width = 6,
-  fig.height = 4
+library(ggplot2)
+theme_set(
+  theme_minimal(
+    base_size = 16
+  ) +
+    theme(
+      plot.title = element_text(face = "bold"),
+      axis.title = element_text(face = "italic")
+    )
 )
 
-if (knitr::is_latex_output()) {
-  
-  # device for plots inside the doc
-  knitr::opts_chunk$set(dev = "cairo_pdf")
-  
-  showtext_auto()
-  
-  theme_set(
-    theme_minimal(base_size = 14, base_family = "Symbola") +
-      theme(
-        plot.title   = element_text(face = "bold", size = 16, hjust = 0.5),
-        axis.title   = element_text(size = 14),
-        axis.text    = element_text(size = 12),
-        legend.title = element_text(size = 13),
-        legend.text  = element_text(size = 11)
-      )
-  )
-}
+library(ggplot2)
 
 if (knitr::is_html_output()) {
-  theme_set(
-    theme_minimal(base_size = 20) +  # bump base_size (try 16–18 for HTML)
-      theme(
-        plot.title   = element_text(face = "bold", size = 20, hjust = 0.5),
-        axis.title   = element_text(size = 16),
-        axis.text    = element_text(size = 14),
-        legend.title = element_text(size = 15),
-        legend.text  = element_text(size = 13)
-      )
+  update_geom_defaults("text", list(size = 12))
+  update_geom_defaults("label", list(size = 12))
+  theme_update(
+    text         = element_text(size = 40),
+    plot.title   = element_text(size = 56, face = "bold"),
+    axis.title   = element_text(size = 40),
+    axis.text    = element_text(size = 40),
+    legend.title = element_text(size = 40),
+    legend.text  = element_text(size = 40),
+    strip.text   = element_text(size = 40)
   )
-  knitr::opts_chunk$set(
-    fig.width  = 8,   # in inches
-    fig.height = 5,
-    dpi        = 120  # controls sharpness
-  ) 
+
+  knitr::opts_chunk$set(fig.width = 8, fig.height = 5, dpi = 150, dev = "png")
 }
 ```
 
@@ -130,7 +101,7 @@ ggplot(num_long, aes(value)) +
   facet_wrap(~feature, scales = "free", ncol = 2) +
   labs(
     x = NULL, y = "Count"
-  ) + theme_minimal() + latex_font_theme()
+  )
 ```
 
 ## Categorical Counts (Phone/Internet/Contract)
@@ -150,8 +121,7 @@ ggplot(cat_long, aes(level)) +
   geom_bar(fill = "#72B7B2") +
   facet_wrap(~ feature, scales = "free_y", ncol = 2) +
   coord_flip() +
-  labs(x = NULL, y = "Count") +
-  latex_font_theme()
+  labs(x = NULL, y = "Count")
 ```
 
 ## Categorical Proportions by Churn
@@ -168,8 +138,7 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
   facet_wrap(~ feature, scales = "free_y", ncol = 2) +
   coord_flip() +
   scale_y_continuous(labels = scales::percent) +
-  labs(x = NULL, y = "Percent", fill = "Churn") +
-  latex_font_theme()
+  labs(x = NULL, y = "Percent", fill = "Churn")
 ```
 
 ## Missingness Overview
@@ -186,8 +155,7 @@ ggplot(missing_df, aes(reorder(feature, pct), pct)) +
   geom_col(fill = "#E45756") +
   coord_flip() +
   scale_y_continuous(labels = scales::percent) +
-  labs(title = "Missing Values by Feature", x = NULL, y = "Percent Missing") +
-  latex_font_theme()
+  labs(title = "Missing Values by Feature", x = NULL, y = "Percent Missing")
 ```
 
 ## Skewness
@@ -221,7 +189,7 @@ p_tenure  <- make_skew_plot(df, "Tenure")
 p_monthly <- make_skew_plot(df, "MonthlyCharges")
 p_total   <- make_skew_plot(df, "TotalCharges")
 
-p_age + latex_font_theme(); p_tenure + latex_font_theme(); p_monthly + latex_font_theme(); p_total + latex_font_theme()
+p_age; p_tenure; p_monthly; p_total
 ```
 
 ## Churn vs Non-Churn Proportions
@@ -253,7 +221,6 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
     title = "Categorical Balances by Churn (Counts)",
     x = NULL, y = "Count", fill = "Churn"
   ) +
-  latex_font_theme() +
   theme(axis.text.x = element_text(size = 8, angle = 20, hjust = 0.5))
 ```
 
@@ -602,7 +569,7 @@ ggcorrplot(cor_mat,
            lab = TRUE,
            lab_size = 3,
            colors = c("#d8b365", "white", "#5ab4ac"),  # muted earthy tones
-           outline.color = "gray50") + latex_font_theme()
+           outline.color = "gray50")
 ```
 
 ## Chi-square + Cramer’s V for categorical vs. Churn
@@ -679,7 +646,7 @@ p <- ggsurvplot(
   data = df_use, 
   risk.table = TRUE, 
   pval = TRUE,
-  pval.size = 3,
+  pval.size = if(knitr::is_html_output()) 10 else 5,
   xlab = "Tenure (months)",
   ylab = "Survival Probability (not churned)",
   legend.title = "Contract Type",
@@ -689,9 +656,8 @@ p <- ggsurvplot(
   risk.table.y.text = TRUE,       # show group labels on the left
   risk.table.y.text.col = TRUE,   # color labels by strata
   break.time.by = 6,              # fewer columns reduces crowding
-  tables.theme = theme_cleantable(),
   
-  ggtheme = theme_minimal() + latex_font_theme()
+  ggtheme = theme_minimal()
 )
 
 p$plot;p$table

@@ -1,62 +1,3 @@
-# 📂 Project Folder Layout
-
-```
-customer-churn-dashboard/
-│
-├── app.R                      # Main Shiny app entry point
-├── README.md                  # Project overview, instructions, screenshots
-├── renv.lock                  # Reproducible R environment lock file
-├── .Rprofile                   # Ensures renv activation on load
-│
-├── R/                         # All R modules and helper functions
-│   ├── mod_filters.R          # Shiny module: filters panel
-│   ├── mod_kpis.R             # Shiny module: KPI boxes
-│   ├── mod_eda.R              # Shiny module: interactive EDA plots
-│   ├── mod_cohorts.R          # Shiny module: retention/cohort analysis
-│   ├── mod_model.R            # Shiny module: churn prediction
-│   ├── utils_data.R           # Data loading & cleaning functions
-│   ├── utils_viz.R            # Common plotting functions
-│   ├── utils_model.R          # ML model training, evaluation
-│   └── utils_cache.R          # Caching/memoization helpers
-│
-├── data/                      # Raw and cleaned data
-│   ├── raw/                   # Original dataset(s) (untouched)
-│   │   └── telecom_churn.csv
-│   ├── processed/             # Cleaned & feature-engineered data
-│   │   └── churn_clean.csv
-│   └── external/              # Any supplementary datasets (e.g., demographics)
-│
-├── models/                    # Saved trained models
-│   ├── rf_churn_model.rds
-│   └── model_metadata.json
-│
-├── www/                       # Web assets for Shiny
-│   ├── custom.css             # Custom styles
-│   ├── logo.png
-│   └── scripts.js
-│
-├── quarto/                    # Narrative report files
-│   ├── churn_analysis.qmd     # Full EDA + model + recommendations
-│   ├── _quarto.yml
-│   └── images/                # Plots/screenshots for report
-│
-├── tests/                     # Automated testing
-│   ├── testthat/              # Unit tests for data/model functions
-│   │   ├── test_data_cleaning.R
-│   │   ├── test_model_training.R
-│   │   └── test_utils.R
-│   └── shinytest2/            # End-to-end UI tests
-│       ├── test_app.R
-│       └── recordings/
-│
-├── scripts/                   # Standalone scripts
-│   ├── prepare_data.R         # One-off data prep pipeline
-│   ├── train_model.R          # Script to retrain churn model
-│   └── generate_report.R      # Script to render Quarto report
-│
-└── Dockerfile                 # For containerized deployment (optional)
-```
-
 # Set up `renv` (reproducible R env)
 
 In **R console** from the project root:
@@ -69,13 +10,39 @@ renv::snapshot() # choose 1
 renv::activate(project = ".")
 
 renv::install(c(
-  "shiny","bslib","tidyverse","plotly","DT","lubridate","data.table",
-  "arrow","duckdb","memoise","pins",
-  "tidymodels","vip","yardstick",
-  "testthat","shinytest2","glue","readr","janitor"
+  "dplyr",
+  "purrr",
+  "tibble",
+  "showtext",
+  "knitr",
+  "kableExtra",
+  "reshape2",
+  "ggcorrplot",
+  "viridis",
+  "rstatix",
+  "DescTools",
+  "FSelectorRcpp",
+  "shiny",
+  "bslib",
+  "tidyverse",
+  "DT",
+  "lubridate",
+  "data.table",
+  "arrow",
+  "duckdb",
+  "memoise",
+  "pins",
+  "tidymodels",
+  "vip",
+  "yardstick",
+  "testthat",
+  "shinytest2",
+  "glue",
+  "readr",
+  "janitor"
 ))
 
-renv::snapshot(prompt = F)
+renv::snapshot()
 ```
 
 # Reproduce
@@ -91,9 +58,9 @@ renv::restore()
 shiny::runApp()
 ```
 
-# Tasks
+# Analysis Steps
 
-## 1. **Univariate & Distributional Analysis**
+## 1. **Univariate & Distributional Analysis** (done)
 
 * **Numeric distributions**: Age, Tenure, MonthlyCharges, TotalCharges → histograms, KDEs, boxplots.
 * **Check skew/outliers** in charges and tenure — might explain unusual churn patterns.
@@ -101,7 +68,7 @@ shiny::runApp()
 
 ---
 
-## 2. **Bivariate (Churn vs. Features)**
+## 2. **Bivariate (Churn vs. Features)** (done)
 
 * **Churn rate by tenure bins** (0–6 months, 6–12, etc.).
 * **Contract type vs. churn** (Month-to-month likely has higher churn).
@@ -111,7 +78,7 @@ shiny::runApp()
 
 ---
 
-## 3. **Multivariate Relationships**
+## 3. **Multivariate Relationships** (done)
 
 * **Age × Tenure × Churn** → are younger short-tenure customers churning more?
 * **MonthlyCharges × Contract × Churn** → is churn high for high-charge, short contracts?
@@ -119,7 +86,7 @@ shiny::runApp()
 
 ---
 
-## 4. **Feature Engineering for EDA**
+## 4. **Feature Engineering for EDA** (done)
 
 * **Customer Lifetime Value proxy** = `MonthlyCharges * Tenure` vs. churn.
 * **Normalized charges** = `TotalCharges / Tenure` (average spend per month).
@@ -127,7 +94,7 @@ shiny::runApp()
 
 ---
 
-## 5. **Segmented Churn Profiles**
+## 5. **Segmented Churn Profiles** (done)
 
 * **Gender × Churn**: is churn rate different between male/female?
 * **PhoneService × Churn**: does having phone service reduce churn likelihood?
@@ -135,7 +102,7 @@ shiny::runApp()
 
 ---
 
-## 6. **Correlation & Association**
+## 6. **Correlation & Association** (done)
 
 * Correlation matrix (numeric only: Age, Tenure, MonthlyCharges, TotalCharges).
 * **Cramer’s V / Chi-square tests** for categorical predictors vs. churn.
@@ -143,7 +110,7 @@ shiny::runApp()
 
 ---
 
-## 7. **Survival-style Analysis (Tenure)**
+## 7. **Survival-style Analysis (Tenure)** (done)
 
 * Treat **Tenure** like “time until churn”.
 * Plot “survival curves” (Kaplan–Meier style) by contract type.
@@ -151,14 +118,14 @@ shiny::runApp()
 
 ---
 
-## 8. **Clustering for Customer Segmentation**
+## 8. **Clustering for Customer Segmentation** (done)
 
 * Cluster customers on Age, Charges, Tenure → then compare churn rates by cluster.
 * Helps identify high-risk customer groups visually.
 
 ---
 
-## 9. **Advanced Visuals**
+## 9. **Advanced Visuals** (done)
 
 * **Heatmaps** of churn rate across two dimensions (e.g., Tenure × MonthlyCharges).
 * **Stacked bar plots** for Contract × Churn.
@@ -166,20 +133,8 @@ shiny::runApp()
 
 ---
 
-## 10. **Feature Importance (pre-ML)**
+## 10. **Feature Importance (pre-ML)** (done)
 
 * Use logistic regression or random forest just for **exploratory feature importance**.
 * Helps decide which variables to highlight in Shiny dashboard.
 
----
-
-## 🔹 Portfolio Angle
-
-In your Quarto EDA report, you should:
-
-* Walk through **descriptive → bivariate → multivariate → survival → clustering**.
-* End with **business insights**:
-  *“Short-tenure, month-to-month, fiber optic customers paying >\$80/month churn at 2.5× the average rate.”*
-  This shows you not only did EDA, but also **translated findings into business terms**.
-
----
