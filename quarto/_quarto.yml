@@ -40,8 +40,8 @@ format:
     fig-height: 8
     
 execute:
-  cache: true
-  freeze: auto
+  #cache: true
+  #freeze: auto
   warning: false
   message: false
   echo: false

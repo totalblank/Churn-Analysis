@@ -33,9 +33,10 @@ font_add("Symbola", "/usr/share/fonts/TTF/Symbola.ttf")
 showtext_auto()
 
 library(ggplot2)
+
 theme_set(
   theme_minimal(
-    base_size = 16
+    base_size = 32
   ) +
     theme(
       plot.title = element_text(face = "bold"),
@@ -43,21 +44,7 @@ theme_set(
     )
 )
 
-library(ggplot2)
-
 if (knitr::is_html_output()) {
-  update_geom_defaults("text", list(size = 12))
-  update_geom_defaults("label", list(size = 12))
-  theme_update(
-    text         = element_text(size = 40),
-    plot.title   = element_text(size = 56, face = "bold"),
-    axis.title   = element_text(size = 40),
-    axis.text    = element_text(size = 40),
-    legend.title = element_text(size = 40),
-    legend.text  = element_text(size = 40),
-    strip.text   = element_text(size = 40)
-  )
-
   knitr::opts_chunk$set(fig.width = 8, fig.height = 5, dpi = 150, dev = "png")
 }
 ```
@@ -287,7 +274,7 @@ cohens_d <- function(x, y) {
 
 `Tenure` is how long a customer has been with the company (in months). Following is the hypothesis,
 
-::: {style="text-align: center; width: 50%"}
+::: {style="text-align: center;"}
 Customer who are **new** (short tenure) are more likely to churn; customers who have stayed longer are "stickier"
 :::
 
@@ -348,7 +335,7 @@ ggplot(tenure_stats, aes(x = level, y = p)) +
     aes(label = scales::percent(p, accuracy = 1)),
     vjust = -1,               # position slightly above bar
     hjust = 1.25,
-    size = 4,
+    size = 6,
   ) +
   scale_y_continuous(labels = scales::percent,
                      expand = expansion(mult = c(0, 0.1))) +
@@ -360,7 +347,9 @@ ggplot(tenure_stats, aes(x = level, y = p)) +
 
 ## Contract Type vs. Churn
 
-Goal: Show how churn differs by contract type. Hypothesis: Month-to-month has higher churn than One/Two year contracts.
+Goal: Show how churn differs by contract type.
+
+Hypothesis: Month-to-month has higher churn than One/Two year contracts.
 
 ```{r}
 df_use |> 
@@ -369,9 +358,17 @@ df_use |>
   group_by(Contract) |> 
   mutate(prop = n / sum(n)) |> 
   ggplot(aes(x = Contract, y = prop, fill = Churn)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
-            position = position_dodge(width = 0.9), vjust = -0.25, size = 3) +
+  geom_col(
+    position = "dodge"
+  ) +
+  geom_text(
+    aes(
+      label = scales::percent(prop, accuracy = 0.1)
+    ),
+    position = position_dodge(width = 0.9),
+    vjust = -0.25,
+    size = 6
+  ) +
   scale_y_continuous(labels = scales::percent) +
   labs(title = "Churn Proportion by Contract Type",
        x = "Contract Type", y = "Proportion")
@@ -389,8 +386,12 @@ df_use |>
   mutate(prop = n / sum(n)) |> 
   ggplot(aes(x = InternetService, y = prop, fill = Churn)) +
   geom_col(position = "dodge") +
-  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
-            position = position_dodge(width = 0.9), vjust = -0.25, size = 3) +
+  geom_text(
+    aes(label = scales::percent(prop, accuracy = 0.1)),
+    position = position_dodge(width = 0.9),
+    vjust = -0.25,
+    size = 6
+  ) +
   scale_y_continuous(labels = scales::percent) +
   labs(title = "Churn Proportion by Internet Service",
        x = "Internet Service", y = "Proportion")
@@ -567,9 +568,13 @@ ggcorrplot(cor_mat,
            hc.order = TRUE,
            type = "lower",
            lab = TRUE,
-           lab_size = 3,
+           lab_size = 10,
            colors = c("#d8b365", "white", "#5ab4ac"),  # muted earthy tones
-           outline.color = "gray50")
+           outline.color = "gray50") +
+    theme(
+      axis.text.x = element_text(size = 24, angle = 45, hjust = 1),
+      axis.text.y = element_text(size = 24),
+  )
 ```
 
 ## Chi-square + Cramer’s V for categorical vs. Churn
@@ -651,13 +656,13 @@ p <- ggsurvplot(
   ylab = "Survival Probability (not churned)",
   legend.title = "Contract Type",
   
-  # give the table breathing room
-  risk.table.height = 0.3,       # try 0.24–0.32
-  risk.table.y.text = TRUE,       # show group labels on the left
-  risk.table.y.text.col = TRUE,   # color labels by strata
-  break.time.by = 6,              # fewer columns reduces crowding
-  
-  ggtheme = theme_minimal()
+  ggtheme = theme_minimal(base_size = 32) +
+    theme(
+      plot.title = element_text(face = "bold"),
+      axis.title = element_text(face = "italic")
+    ),
+  tables.theme = theme(text = element_text(size = 32)),
+  risk.table.fontsize = 12
 )
 
 p$plot;p$table
