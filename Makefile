@@ -1,15 +1,14 @@
-# Paths to your processed data and schema
 DATA_PROCESSED = data/processed/customer_churn_data_clean.csv
 SCHEMA_FILE    = data/schema.json
 
-# Schema locking target (run once after cleaning)
+# Schema locking target
 schema:
 	Rscript --vanilla -e "renv::activate('.'); \
 	                      renv::restore(prompt=FALSE); \
 	                      source('R/utils_schema.R'); \
 	                      lock_schema('$(DATA_PROCESSED)', '$(SCHEMA_FILE)', metadata = list(stage='processed'))"
 
-# Schema checking target (run whenever you want to validate)
+# Schema checking target
 schema-check:
 	Rscript --vanilla -e "renv::activate('.'); \
 	                      renv::restore(prompt=FALSE); \
