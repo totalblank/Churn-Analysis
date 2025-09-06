@@ -220,7 +220,7 @@ make_skew_plot <- function(df, feature) {
       aes(xintercept = xintercept, color = stat_type, linetype = stat_type),
       linewidth = 0.9
     ) +
-    annotate("text", x = Inf, y = Inf, label = label, hjust = 1.05, vjust = 1.3) +
+    annotate("text", x = Inf, y = Inf, label = label, hjust = 1.05, vjust = 1.3, size = 12) +
     labs(title = feature, x = NULL, y = NULL,
          color = "Statistic", linetype = "Statistic") +
     scale_color_manual(values = c(Mean = "red", Median = "blue")) +

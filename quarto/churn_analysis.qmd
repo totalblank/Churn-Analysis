@@ -179,6 +179,9 @@ p_total   <- make_skew_plot(df, "TotalCharges")
 p_age; p_tenure; p_monthly; p_total
 ```
 
+The last plot suggest that most customers generate relatively low revenue, but a smaller group contributes disproportionately
+higher revenue. This suggest that the company may rely heavily on a minority of high-value customers.
+
 ## Churn vs Non-Churn Proportions
 
 ```{r}
@@ -635,6 +638,12 @@ mi_tbl %>%
 
 # Survival-style Analysis
 
+The Kaplan-Meier estimator generates the survival curves for different contract types. It answers the following simple yet important question,
+
+::: {style="text-align: center;"}
+What percentage of customers are still active after X months, depending on their contract type?
+:::
+
 ```{r}
 library(survival)
 library(survminer)
@@ -651,7 +660,7 @@ p <- ggsurvplot(
   data = df_use, 
   risk.table = TRUE, 
   pval = TRUE,
-  pval.size = if(knitr::is_html_output()) 10 else 5,
+  pval.size = 10,
   xlab = "Tenure (months)",
   ylab = "Survival Probability (not churned)",
   legend.title = "Contract Type",
