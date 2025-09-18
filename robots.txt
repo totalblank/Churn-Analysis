@@ -1,1 +1,1 @@
-Sitemap: https://totalblank.github.io/Interactive_Churn_Analytics/sitemap.xml
+Sitemap: https://totalblank.github.io/Churn-Analysis/sitemap.xml
