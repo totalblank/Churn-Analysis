@@ -350,6 +350,16 @@ ggplot(tenure_stats, aes(x = level, y = p)) +
   ) 
 ```
 
+### Chi-Square test
+
+```{r}
+chisq.test(table(df_tenure$tenure_bin, df_tenure$Churn))
+```
+
+Not significant.
+
+### Logistic regression test
+
 ```{r}
 logit <- glm(Churn ~ tenure_bin, data = df_tenure, family = binomial)
 summary(logit)
