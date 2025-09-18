@@ -198,35 +198,45 @@ print_table <- function(
 
 make_skew_plot <- function(df, feature) {
   v <- df[[feature]]
+  
+  if (!is.numeric(v)) {
+    stop(sprintf("`%s` must be numeric to compute density/skew.", feature))
+  }
+  
   d <- data.frame(value = v)
-
+  
   m   <- mean(v, na.rm = TRUE)
   med <- median(v, na.rm = TRUE)
   sdv <- sd(v, na.rm = TRUE)
-
+  
   skew <- if (is.na(sdv) || sdv == 0) NA_real_ else 3 * (m - med) / sdv
   dir  <- if (m > med) "Right-skewed" else if (m < med) "Left-skewed" else "Symmetric"
   label <- if (is.na(skew)) dir else sprintf("%s\nSkew ≈ %.2f", dir, skew)
-
+  
   lines <- data.frame(
     stat_type  = c("Mean", "Median"),
     xintercept = c(m, med)
   )
-
+  
   ggplot(d, aes(value)) +
-    geom_density(fill = "#4C78A8", alpha = 0.3) +
+    geom_density(fill = "#4C78A8", alpha = 0.3, na.rm = TRUE) +
     geom_vline(
       data = lines,
       aes(xintercept = xintercept, color = stat_type, linetype = stat_type),
-      linewidth = 0.9
+      linewidth = 0.9,
+      inherit.aes = FALSE
     ) +
     annotate("text", x = Inf, y = Inf, label = label, hjust = 1.05, vjust = 1.3, size = 12) +
     labs(title = feature, x = NULL, y = NULL,
          color = "Statistic", linetype = "Statistic") +
     scale_color_manual(values = c(Mean = "red", Median = "blue")) +
     scale_linetype_manual(values = c(Mean = "dashed", Median = "dotted")) +
-    theme(legend.position = "bottom", plot.margin = margin(10, 20, 10, 10))
+    theme(
+      legend.position = "bottom",
+      plot.margin = ggplot2::margin(10, 20, 10, 10, unit = "pt")
+    )
 }
+
 
 # Wilson CI (no name clashes with outer columns)
 prop_ci_wilson <- function(success, n, conf.level = 0.95) {

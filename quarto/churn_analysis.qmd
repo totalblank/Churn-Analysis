@@ -24,6 +24,8 @@ format: html
   library(rstatix)
   library(DescTools)
   library(FSelectorRcpp)
+  library(caret)
+  library(randomForest)
 })
 
 source("../R/utils.R")
@@ -171,7 +173,7 @@ num_long |>
 ### Skew check
 
 ```{r}
-p_age     <- make_skew_plot(df, "Age")
+p_age     <- make_skew_plot(df_use, "Age")
 p_tenure  <- make_skew_plot(df, "Tenure")
 p_monthly <- make_skew_plot(df, "MonthlyCharges")
 p_total   <- make_skew_plot(df, "TotalCharges")
@@ -179,8 +181,7 @@ p_total   <- make_skew_plot(df, "TotalCharges")
 p_age; p_tenure; p_monthly; p_total
 ```
 
-The last plot suggest that most customers generate relatively low revenue, but a smaller group contributes disproportionately
-higher revenue. This suggest that the company may rely heavily on a minority of high-value customers.
+The last plot suggest that most customers generate relatively low revenue, but a smaller group contributes disproportionately higher revenue. This suggest that the company may rely heavily on a minority of high-value customers.
 
 ## Churn vs Non-Churn Proportions
 
@@ -210,8 +211,9 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
   labs(
     title = "Categorical Balances by Churn (Counts)",
     x = NULL, y = "Count", fill = "Churn"
-  ) +
-  theme(axis.text.x = element_text(size = 8, angle = 20, hjust = 0.5))
+  )
+#+
+  #theme(axis.text.x = element_text(size = 8, angle = 20, hjust = 0.5))
 ```
 
 ### Normalized bar (proportions within each category)
@@ -224,8 +226,8 @@ ggplot(cat_long_churn, aes(level, fill = Churn)) +
   labs(
     title = "Categorical Balances by Churn (Proportions)",
     x = NULL, y = "Percent", fill = "Churn"
-  ) +
-  theme(axis.text.x = element_text(angle = 20, hjust = 0.5, size = 8))
+  )
+# + theme(axis.text.x = element_text(angle = 20, hjust = 0.5, size = 8))
 ```
 
 # Bivariate (Churn vs. Features)
@@ -338,7 +340,7 @@ ggplot(tenure_stats, aes(x = level, y = p)) +
     aes(label = scales::percent(p, accuracy = 1)),
     vjust = -1,               # position slightly above bar
     hjust = 1.25,
-    size = 6,
+    size = 12,
   ) +
   scale_y_continuous(labels = scales::percent,
                      expand = expansion(mult = c(0, 0.1))) +
@@ -347,6 +349,13 @@ ggplot(tenure_stats, aes(x = level, y = p)) +
     x = "Tenure (months)", y = "Churn rate"
   ) 
 ```
+
+```{r}
+logit <- glm(Churn ~ tenure_bin, data = df_tenure, family = binomial)
+summary(logit)
+```
+
+Only the `Intercept` is statistically significant. So, we can't accept out hypothesis.
 
 ## Contract Type vs. Churn
 
@@ -370,7 +379,7 @@ df_use |>
     ),
     position = position_dodge(width = 0.9),
     vjust = -0.25,
-    size = 6
+    size = 12
   ) +
   scale_y_continuous(labels = scales::percent) +
   labs(title = "Churn Proportion by Contract Type",
@@ -393,7 +402,7 @@ df_use |>
     aes(label = scales::percent(prop, accuracy = 0.1)),
     position = position_dodge(width = 0.9),
     vjust = -0.25,
-    size = 6
+    size = 12
   ) +
   scale_y_continuous(labels = scales::percent) +
   labs(title = "Churn Proportion by Internet Service",
@@ -549,10 +558,16 @@ df_use_2 <- df_use |>
   ))
 
 df_use_2 |> 
+  sample_n(5) |> 
+  print_table('Risk Cohort table')
+
+df_use_2 |> 
   ggplot(aes(x = RiskCohort, fill = Churn)) +
   geom_bar(position = "fill") +
   scale_y_continuous(labels = scales::percent)
 ```
+
+*High-risk customers* churn much more, with over half leaving. *Low/medium-risk customers* mostly stay, with only a small fraction churning. This highlights the value of risk segmentation: high-risk cohorts require targeted retention strategies to reduce churn and improve overall customer retention.
 
 # Correlation & Association
 
@@ -604,11 +619,11 @@ chi_cramer_tbl <- map_dfr(cat_vars, function(v) {
 print_table(chi_cramer_tbl, caption = "Cramér’s V - Effect size measure")
 ```
 
-Which shows that, to predict churn, Contract is a strong (because of low p_value) predictor. Next up are, Gender, PhoneService, and InternetService.
+Which shows that, to predict churn, Contract is a strong (because of low p_value) predictor. Next up are, `Gender`, `PhoneService`, and `InternetService`.
 
 ## Mutual information (any type $\rightarrow$ Churn)
 
-Mutual Information is a great way to rank all features (numeric + categorical) together by how much they help explain churn. It complements correlation, Chi-square, and Cramér’s V by giving a unified importance measure.
+Mutual Information serves to rank all features (numeric + categorical) together by how much they help explain churn. It complements correlation, Chi-square, and Cramér’s V by giving a unified importance measure.
 
 ```{r}
 # Compute MI for all features (drop ID-like columns if present)
@@ -675,4 +690,61 @@ p <- ggsurvplot(
 )
 
 p$plot;p$table
+```
+
+The Kaplan–Meier survival curves show how long customers remain active without churning, based on contract type. *Month-to-month customers* (red) churn steadily, with survival probability dropping below 50% by around 40–50 months. In contrast, *one-year* (green) and *two-year contracts* (blue) maintain nearly perfect retention over time, with very little churn observed. The p-value (\<0.0001) indicates these differences are highly statistically significant. In short, customers on longer-term contracts are far less likely to churn, while month-to-month customers have much higher and earlier churn rates. Contract length is thus a critical factor in customer retention.
+
+# Feature Importance
+
+## Logistic Regression for Feature Importance
+
+```{r}
+
+trainIndex <- createDataPartition(df_use$Churn, p = 0.7, list = FALSE)
+train <- df_use[trainIndex, ]
+test  <- df_use[-trainIndex, ]
+
+logit_model <- glm(Churn ~ ., data = train, family = binomial)
+
+# Get coefficients
+coef_summary <- summary(logit_model)$coefficients %>%
+  as.data.frame() %>%
+  rownames_to_column("feature")
+
+coef_summary %>%
+  arrange(`Pr(>|z|)`) %>%
+  head(10) |> 
+  print_table("Logistic model estimates")
+
+```
+
+The above table is sorted with respect to p-value. The only significant feature for predicting `Churn` according to this model is `InternetServiceFiber optic`. Even though, `PhoneService` and the intercept has a low p-value, they are not significant.
+
+## Random Forest for Feature Importance
+
+```{r}
+set.seed(123)
+rf_model <- randomForest(Churn ~ ., data = train, ntree = 200, importance = TRUE)
+
+# Extract feature importance
+importance_df <- importance(rf_model) %>%
+  as.data.frame() %>%
+  rownames_to_column("feature")
+
+importance_df %>%
+  arrange(desc(MeanDecreaseGini)) %>%
+  head(10) |> 
+  print_table("Random forest estimates")
+```
+
+The random forest importance table shows that `Contract` is the most influential predictor of churn, with the highest values in both `MeanDecreaseAccuracy` (44.71) and `MeanDecreaseGini` (79.11). `MonthlyCharges`, `Age`, `TotalCharges`, and `Tenure` also contribute meaningfully, though at lower levels, indicating that financial and tenure-related variables affect churn risk. `InternetService`, `Gender`, and `PhoneService` have much smaller importance scores, suggesting they add little predictive value. Overall, contract type dominates as the key driver, followed by monetary and tenure factors, while demographic or service-type variables play a minor role in predicting churn.
+
+```{r}
+importance_df %>%
+  arrange(desc(MeanDecreaseGini)) %>%
+  slice(1:15) %>%
+  ggplot(aes(x = reorder(feature, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Random Forest Feature Importance", x = "Feature", y = "Importance")
 ```
